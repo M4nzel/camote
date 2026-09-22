@@ -20,16 +20,20 @@
   --dorado: #ffd23f;
 
   /* Carta de papel */
-  --papel: #f6ecd8;
+  --papel: #f7edd9;
   --papel-sombra: #e9dcc2;
-  --papel-borde: #d8c7a6;
-  --tinta: #4a3728;
-  --tinta-suave: #6f5943;
+  --papel-borde: #d6c4a2;
+  /* Tinta de estilográfica: marrón muy oscuro, no gris. Sobre el papel da
+     11,7:1 de contraste (WCAG AAA); el tono anterior se quedaba en 5,6:1. */
+  --tinta: #2e2317;
+  --tinta-cuerpo: #3a2a1a;
+  --raya: rgb(86 116 156 / 13%);
   --solapa: #d9a89a;
   --solapa-honda: #c28d7e;
-  --sello: #b5483f;
+  --sello: #ab3f38;
 
   --tipo-titulo: 'Caveat', 'Segoe Script', cursive;
+  --tipo-carta: 'Lora', Georgia, 'Times New Roman', serif;
   --tipo-texto: 'Quicksand', 'Trebuchet MS', system-ui, sans-serif;
 
   color-scheme: dark;
@@ -134,8 +138,8 @@ body {
     /* Rayado tenue de cuaderno */
     repeating-linear-gradient(
       180deg,
-      transparent 0 30px,
-      rgb(74 55 40 / 5%) 30px 31px
+      transparent 0 32px,
+      var(--raya) 32px 33px
     ),
     /* Dos manchas cálidas que rompen el plano del papel */
       radial-gradient(ellipse at 18% 12%, rgb(255 255 255 / 55%), transparent 55%),
@@ -217,12 +221,22 @@ body {
 
 .papel__linea {
   margin: 0;
-  font-size: clamp(1rem, 4vw, 1.06rem);
-  line-height: 1.85;
-  color: var(--tinta-suave);
+  font-family: var(--tipo-carta);
+  font-size: clamp(1.02rem, 4.2vw, 1.1rem);
+  font-weight: 500;
+  line-height: 1.8;
+  color: var(--tinta-cuerpo);
   /* Cortes limpios en pantallas estrechas. */
   overflow-wrap: break-word;
   hyphens: auto;
+}
+
+/* La primera línea es la entradilla: se lee antes que el resto. */
+.papel__linea:first-child {
+  font-size: clamp(1.1rem, 4.6vw, 1.2rem);
+  font-weight: 600;
+  font-style: italic;
+  color: var(--tinta);
 }
 
 /* ──────────────────────────────── Botones ───────────────────────────────── */
