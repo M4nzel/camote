@@ -5,9 +5,12 @@
      z-index 10   .capa-carta  → la carta 2D
      z-index 20   .hud         → los apodos y el botón de volver
 
-   Las capas 10 y 20 son contenedores con `pointer-events: none`; sólo sus
-   hijos interactivos lo recuperan. Así ninguna capa transparente se come los
-   clics del canvas, ni siquiera mientras se está desvaneciendo.
+   Reparto del puntero, que es lo que hace que nada se coma los clics:
+     · Mientras la carta está en pantalla, la capa 10 recibe el puntero. Debe
+       hacerlo para poder desplazarse con el dedo en iOS.
+     · En cuanto la carta se desvanece, la capa 10 pasa a `pointer-events: none`
+       y el canvas 3D recibe todos los gestos.
+     · La capa 20 (HUD) nunca intercepta: sólo su botón lo hace.
    ────────────────────────────────────────────────────────────────────────── */
 
 :root {
@@ -47,6 +50,9 @@ html,
 body,
 #root {
   height: 100%;
+  /* En iOS la barra del navegador se come parte del 100%; dvh mide el alto
+     que de verdad se ve. Los navegadores que no lo entiendan usan el 100%. */
+  height: 100dvh;
 }
 
 body {
@@ -63,6 +69,7 @@ body {
   position: relative;
   width: 100%;
   height: 100%;
+  height: 100dvh;
 }
 
 /* ─────────────────────────────── Capa 3D ─────────────────────────────────── */
@@ -98,23 +105,26 @@ body {
   inset: 0;
   z-index: 10;
   display: flex;
-  padding: clamp(12px, 4vw, 40px);
-  /* Si la carta no cabe (móvil en horizontal, mensajes largos), se puede
-     desplazar. El scroll lo arranca el sobre, que sí recibe el puntero. */
+  padding: calc(clamp(12px, 4vw, 40px) + env(safe-area-inset-top)) clamp(12px, 4vw, 40px)
+    calc(clamp(12px, 4vw, 40px) + env(safe-area-inset-bottom));
+  /* Si la carta no cabe (móvil, mensajes largos), esta capa hace el scroll. */
   overflow-y: auto;
   overscroll-behavior: contain;
-  /* El contenedor es transparente al ratón; sólo el sobre recibe clics. */
-  pointer-events: none;
-}
+  -webkit-overflow-scrolling: touch;
 
-.capa-carta .sobre {
+  /* Esta capa SÍ recibe el puntero mientras la carta está en pantalla.
+     Es imprescindible en iOS: Safari sólo deja arrastrar para desplazar un
+     contenedor si ese contenedor es alcanzable por el dedo, y con
+     `pointer-events: none` no lo es. En escritorio no se notaba porque la
+     rueda del ratón se propaga igual desde el hijo. */
   pointer-events: auto;
 }
 
-/* Al desvanecerse, la capa entera deja de existir para el ratón. */
-.capa-carta--oculta,
-.capa-carta--oculta .sobre {
+/* Al desvanecerse la carta, la capa entera desaparece para el puntero y el
+   canvas 3D recibe los gestos sin que ningún z-index se los coma. */
+.capa-carta--oculta {
   pointer-events: none;
+  overflow: hidden;
 }
 
 /* ──────────────────────────────── La carta ──────────────────────────────── */
@@ -228,6 +238,7 @@ body {
   color: var(--tinta-cuerpo);
   /* Cortes limpios en pantallas estrechas. */
   overflow-wrap: break-word;
+  -webkit-hyphens: auto;
   hyphens: auto;
 }
 
@@ -322,6 +333,7 @@ body {
   color: var(--rosa-suave);
   border-color: rgb(255 233 244 / 26%);
   background: rgb(20 8 34 / 62%);
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
 }
 
