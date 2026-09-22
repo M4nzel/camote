@@ -31,12 +31,6 @@ jobs:
       - run: pnpm test
       - run: pnpm build
 
-      # `enablement` activa GitHub Pages por API si aún no lo estaba, para no
-      # tener que ir a Settings a mano.
-      - uses: actions/configure-pages@v5
-        with:
-          enablement: true
-
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
