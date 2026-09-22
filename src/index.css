@@ -1,0 +1,375 @@
+/* ───────────────────────────── Universo Camila ─────────────────────────────
+   Tres capas apiladas, y el orden importa:
+
+     z-index  0   .lienzo      → el canvas WebGL, siempre al fondo
+     z-index 10   .capa-carta  → la carta 2D
+     z-index 20   .hud         → los apodos y el botón de volver
+
+   Las capas 10 y 20 son contenedores con `pointer-events: none`; sólo sus
+   hijos interactivos lo recuperan. Así ninguna capa transparente se come los
+   clics del canvas, ni siquiera mientras se está desvaneciendo.
+   ────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Universo */
+  --fondo-profundo: #080312;
+  --fondo-medio: #1b0b2e;
+  --rosa: #ff8fc7;
+  --rosa-suave: #ffd7ec;
+  --violeta: #6f7bff;
+  --dorado: #ffd23f;
+
+  /* Carta de papel */
+  --papel: #f6ecd8;
+  --papel-sombra: #e9dcc2;
+  --papel-borde: #d8c7a6;
+  --tinta: #4a3728;
+  --tinta-suave: #6f5943;
+  --solapa: #d9a89a;
+  --solapa-honda: #c28d7e;
+  --sello: #b5483f;
+
+  --tipo-titulo: 'Caveat', 'Segoe Script', cursive;
+  --tipo-texto: 'Quicksand', 'Trebuchet MS', system-ui, sans-serif;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  background: var(--fondo-profundo);
+  color: var(--rosa-suave);
+  font-family: var(--tipo-texto);
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+}
+
+.escena {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* ─────────────────────────────── Capa 3D ─────────────────────────────────── */
+
+.lienzo {
+  z-index: 0;
+}
+
+/* Velo radial que asienta la carta sobre el fondo; nunca captura el ratón. */
+.escena::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at 50% 45%,
+    rgb(111 123 255 / 12%) 0%,
+    rgb(8 3 18 / 58%) 60%,
+    rgb(8 3 18 / 88%) 100%
+  );
+  transition: opacity 1.4s ease;
+}
+
+.escena--universo::after {
+  opacity: 0.25;
+}
+
+/* ───────────────────────────── Capa de la carta ──────────────────────────── */
+
+.capa-carta {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  padding: clamp(12px, 4vw, 40px);
+  /* Si la carta no cabe (móvil en horizontal, mensajes largos), se puede
+     desplazar. El scroll lo arranca el sobre, que sí recibe el puntero. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* El contenedor es transparente al ratón; sólo el sobre recibe clics. */
+  pointer-events: none;
+}
+
+.capa-carta .sobre {
+  pointer-events: auto;
+}
+
+/* Al desvanecerse, la capa entera deja de existir para el ratón. */
+.capa-carta--oculta,
+.capa-carta--oculta .sobre {
+  pointer-events: none;
+}
+
+/* ──────────────────────────────── La carta ──────────────────────────────── */
+
+.sobre {
+  /* `margin: auto` centra en los dos ejes sin cortar por arriba cuando la
+     carta es más alta que la pantalla; `align-items: center` sí cortaría. */
+  margin: auto;
+  position: relative;
+  width: min(560px, 100%);
+  /* Proporción de una hoja de carta (Letter, 8,5 × 11 pulgadas). Es un tamaño
+     preferido: si el mensaje es largo, la hoja crece en vez de recortarlo. */
+  aspect-ratio: 8.5 / 11;
+  height: auto;
+  padding: clamp(74px, 15vw, 96px) clamp(22px, 7vw, 54px) clamp(26px, 6vw, 46px);
+
+  border-radius: 4px;
+  border: 1px solid var(--papel-borde);
+  color: var(--tinta);
+  background:
+    /* Rayado tenue de cuaderno */
+    repeating-linear-gradient(
+      180deg,
+      transparent 0 30px,
+      rgb(74 55 40 / 5%) 30px 31px
+    ),
+    /* Dos manchas cálidas que rompen el plano del papel */
+      radial-gradient(ellipse at 18% 12%, rgb(255 255 255 / 55%), transparent 55%),
+    radial-gradient(ellipse at 85% 95%, rgb(180 150 105 / 22%), transparent 60%),
+    var(--papel);
+  box-shadow:
+    0 26px 60px rgb(8 3 18 / 62%),
+    0 2px 0 var(--papel-sombra),
+    inset 0 0 60px rgb(180 150 105 / 14%);
+
+  display: flex;
+  flex-direction: column;
+  perspective: 1200px;
+  transform-style: preserve-3d;
+}
+
+/* Solapa del sobre: se abre hacia atrás con GSAP (rotateX). */
+.sobre__solapa {
+  position: absolute;
+  inset: -1px -1px auto -1px;
+  height: clamp(58px, 12vw, 76px);
+  transform-origin: top center;
+  transform: rotateX(0deg);
+  backface-visibility: hidden;
+  border-radius: 4px 4px 0 0;
+  background: linear-gradient(180deg, var(--solapa), var(--solapa-honda));
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  filter: drop-shadow(0 4px 6px rgb(74 55 40 / 22%));
+}
+
+.sobre__cuerpo {
+  position: relative;
+  /* Ocupa la hoja entera y centra lo escrito: sin esto, con la carta cerrada
+     queda medio folio vacío debajo del título. */
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(16px, 3.5vw, 26px);
+  text-align: center;
+}
+
+.sobre__titulo {
+  margin: 0;
+  font-family: var(--tipo-titulo);
+  font-weight: 700;
+  font-size: clamp(2.1rem, 9vw, 3.1rem);
+  line-height: 1.05;
+  color: var(--tinta);
+}
+
+/* Filete decorativo bajo el título, como el de una carta escrita a mano. */
+.sobre__titulo::after {
+  content: '';
+  display: block;
+  width: 54%;
+  height: 1px;
+  margin: 0.45em auto 0;
+  background: linear-gradient(90deg, transparent, var(--papel-borde), transparent);
+}
+
+.papel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(18px, 4vw, 26px);
+  width: 100%;
+  transform-origin: top center;
+}
+
+.papel__mensaje {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75em;
+  width: 100%;
+  text-align: left;
+}
+
+.papel__linea {
+  margin: 0;
+  font-size: clamp(1rem, 4vw, 1.06rem);
+  line-height: 1.85;
+  color: var(--tinta-suave);
+  /* Cortes limpios en pantallas estrechas. */
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+/* ──────────────────────────────── Botones ───────────────────────────────── */
+
+.boton {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--tinta);
+  border-radius: 999px;
+  /* 44px de alto mínimo: el objetivo táctil cómodo en móvil. */
+  min-height: 44px;
+  padding: 0.75em 1.9em;
+  font-family: var(--tipo-texto);
+  font-size: clamp(0.95rem, 3.6vw, 1.02rem);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--papel);
+  background: var(--tinta);
+  cursor: pointer;
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease,
+    background 0.25s ease;
+}
+
+.boton:hover,
+.boton:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 26px rgb(74 55 40 / 34%);
+}
+
+.boton:focus-visible {
+  outline: 2px solid var(--sello);
+  outline-offset: 3px;
+}
+
+.boton:active {
+  transform: translateY(0);
+}
+
+.boton__texto {
+  position: relative;
+  z-index: 1;
+}
+
+/* Destello que recorre el botón. */
+.boton__brillo {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 35%,
+    rgb(255 255 255 / 26%) 50%,
+    transparent 65%
+  );
+  transform: translateX(-120%);
+  animation: destello 3.6s ease-in-out infinite;
+}
+
+@keyframes destello {
+  0%,
+  55% {
+    transform: translateX(-120%);
+  }
+  85%,
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+/* El botón que abre el universo: lacre rojo sobre el papel. */
+.boton--magica {
+  border-color: var(--sello);
+  background: linear-gradient(160deg, #c8554b, var(--sello));
+  color: #fff4ec;
+  box-shadow: 0 10px 26px rgb(181 72 63 / 34%);
+}
+
+/* El de volver a la carta vive sobre el universo oscuro, no sobre el papel. */
+.boton--discreta {
+  padding: 0.6em 1.5em;
+  font-size: 0.92rem;
+  color: var(--rosa-suave);
+  border-color: rgb(255 233 244 / 26%);
+  background: rgb(20 8 34 / 62%);
+  backdrop-filter: blur(8px);
+}
+
+/* El botón que ya cumplió su papel: invisible al ratón y al teclado. */
+.boton--retirado {
+  pointer-events: none;
+}
+
+/* ───────────────────────────────── HUD 3D ───────────────────────────────── */
+
+.hud {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 0 20px calc(clamp(22px, 5vh, 44px) + env(safe-area-inset-bottom));
+  /* Igual que la capa de la carta: el contenedor no intercepta nada. */
+  pointer-events: none;
+  opacity: 0;
+}
+
+.hud--visible .boton {
+  pointer-events: auto;
+}
+
+.hud__apodo {
+  margin: 0;
+  font-family: var(--tipo-titulo);
+  font-size: clamp(2rem, 11vw, 3.2rem);
+  line-height: 1.1;
+  text-align: center;
+  color: var(--dorado);
+  text-shadow: 0 0 34px rgb(255 210 63 / 45%);
+}
+
+/* ───────────────────────────────── Móvil ────────────────────────────────── */
+
+/* En pantallas bajas (móvil en horizontal) la proporción de hoja no cabe:
+   se deja que la carta se ajuste al contenido. */
+@media (max-height: 560px) {
+  .sobre {
+    aspect-ratio: auto;
+    padding-top: clamp(56px, 11vw, 74px);
+  }
+}
+
+@media (max-width: 420px) {
+  .sobre {
+    width: 100%;
+    /* Hojas estrechas: la proporción Letter deja demasiado hueco. */
+    aspect-ratio: 3 / 4;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boton__brillo {
+    animation: none;
+  }
+  .escena::after {
+    transition: none;
+  }
+}
